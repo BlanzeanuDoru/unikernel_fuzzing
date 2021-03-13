@@ -1,0 +1,71 @@
+diff --git a/Makefile b/Makefile
+index bbc57252..9c6380ed 100644
+--- a/Makefile
++++ b/Makefile
+@@ -305,6 +305,7 @@ COMMON = $(autodepend) -g -Wall -Wno-pointer-arith $(CFLAGS_WERROR) -Wformat=0 -
+ 	$(arch-cflags) $(conf-opt) $(acpi-defines) $(tracing-flags) $(gcc-sysroot) \
+ 	$(configuration) -D__OSV__ -D__XEN_INTERFACE_VERSION__="0x00030207" -DARCH_STRING=$(ARCH_STR) $(EXTRA_FLAGS)
+ COMMON += $(standard-includes-flag)
++COMMON += -fprofile-arcs -ftest-coverage -fprofile-use -fprofile-generate -Wno-maybe-uninitialized -lgcov --coverage
+ 
+ tracing-flags-0 =
+ tracing-flags-1 = -finstrument-functions -finstrument-functions-exclude-file-list=c++,trace.cc,trace.hh,align.hh,mmintrin.h
+diff --git a/scripts/setup.py b/scripts/setup.py
+index 7413db7b..dec390c5 100755
+--- a/scripts/setup.py
++++ b/scripts/setup.py
+@@ -212,7 +212,13 @@ class Debian(object):
+         ec2_post_install = None
+         version = '9.3'
+ 
+-    versions = [debian, Debian_9_3]
++    class Debian_10(object):
++        packages = ['lib32stdc++-7-dev', 'openjdk-8-jdk',]
++        ec2_packages = []
++        test_packages = []
++        ec2_post_install = None
++        version = '10'
++    versions = [debian, Debian_9_3, Debian_10]
+ 
+ class Ubuntu(object):
+     name = 'Ubuntu'
+@@ -403,20 +409,19 @@ for distro in distros:
+             distro.name = dname[0]
+         else:
+             continue
+-
+-    if name.startswith(distro.name):
++    if name.lower().startswith(distro.name):
+         for dver in distro.versions:
+             if dver.version == version or version.startswith(dver.version+'.'):
+-                if hasattr(distro, 'pre_install'):
+-                    subprocess.check_call(distro.pre_install, shell=True)
+-                if hasattr(dver, 'pre_install'):
+-                    subprocess.check_call(dver.pre_install, shell=True)
+-                pkg = distro.packages + dver.packages
+-                if cmdargs.ec2:
+-                    pkg += distro.ec2_packages + dver.ec2_packages
+-                if cmdargs.test:
+-                    pkg += distro.test_packages + dver.test_packages
+-                subprocess.check_call(distro.install + ' ' + str.join(' ', pkg), shell=True)
++                #if hasattr(distro, 'pre_install'):
++                #    subprocess.check_call(distro.pre_install, shell=True)
++                #if hasattr(dver, 'pre_install'):
++                #    subprocess.check_call(dver.pre_install, shell=True)
++                #pkg = distro.packages + dver.packages
++                #if cmdargs.ec2:
++                #    pkg += distro.ec2_packages + dver.ec2_packages
++                #if cmdargs.test:
++                #    pkg += distro.test_packages + dver.test_packages
++                #subprocess.check_call(distro.install + ' ' + str.join(' ', pkg), shell=True)
+                 if cmdargs.ec2:
+                     if distro.ec2_post_install:
+                         subprocess.check_call(distro.ec2_post_install, shell=True)
+@@ -430,5 +435,7 @@ for distro in distros:
+         print ('Your distribution %s version %s is not supported by this script' % (name, version))
+         sys.exit(1)
+ 
++print(name)
++print(version)
+ print('Your distribution is not supported by this script.')
+ sys.exit(2)

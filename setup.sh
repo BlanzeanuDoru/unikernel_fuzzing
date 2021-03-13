@@ -58,3 +58,42 @@ cd ../ && git clone https://github.com/unikraft/kraft
 # /usr/local/bin/qemu-guest -k build/app-helloworld-gcov_kvm-x86_64 -e fs0
 echo "To run: /usr/local/bin/qemu-guest -k build/app-helloworld-gcov_kvm-x86_64 -e fs0"
 
+### GCOV with other unikernels
+GCOV_INVESTIGATION=gcov_investigation
+
+# repos
+REPOS=(
+	https://github.com/rumpkernel/rumprun.git
+	https://github.com/includeos/IncludeOS
+	https://github.com/cloudius-systems/osv
+	https://github.com/ssrg-vt/hermitux
+)
+
+# Create separate directory for the investigation on OSi
+cd ..
+mkdir -p ${GCOV_INVESTIGATION}
+
+cd ${GCOV_INVESTIGATION}
+
+# Clone github repos for OS
+for repo in ${REPOS[*]}; do
+	git clone $repo
+done
+
+# For MirageOS `opam` is needed
+# opam init
+# opam install mirage
+
+# Include OS
+
+# OSV
+# apply patch for gcov
+cd osv
+git submodule update --init --recursive
+patch -p1 < ../../patches/osv_patch_for_gcov.patch
+# ./scripts/setup.py     #this installs prerequisites(not needed on this machine)
+./scripts/build
+
+# Hermitux
+cd ../hermitux
+git submodule init && git submodule update
