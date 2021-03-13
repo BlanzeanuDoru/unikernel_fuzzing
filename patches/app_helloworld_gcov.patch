@@ -1,0 +1,14 @@
+diff --git a/Makefile b/Makefile
+index 9c5a4ba..c7a6871 100644
+--- a/Makefile
++++ b/Makefile
+@@ -1,6 +1,6 @@
+-UK_ROOT ?= $(PWD)/../../unikraft
+-UK_LIBS ?= $(PWD)/../../libs
+-LIBS := $(UK_LIBS)/pthread-embedded:$(UK_LIBS)/libunwind:$(UK_LIBS)/compiler-rt:$(UK_LIBS)/libcxxabi:$(UK_LIBS)/libcxx:$(UK_LIBS)/newlib:$(UK_LIBS)/gcc
++UK_ROOT ?= $(PWD)/../unikraft
++UK_LIBS ?= $(PWD)/../libs
++LIBS := $(UK_LIBS)/lib-pthread-embedded:$(UK_LIBS)/lib-libunwind:$(UK_LIBS)/lib-compiler-rt:$(UK_LIBS)/lib-libcxxabi:$(UK_LIBS)/lib-libcxx:$(UK_LIBS)/lib-newlib:$(UK_LIBS)/lib-gcc
+ 
+ all:
+ 	@$(MAKE) -C $(UK_ROOT) A=$(PWD) L=$(LIBS)
