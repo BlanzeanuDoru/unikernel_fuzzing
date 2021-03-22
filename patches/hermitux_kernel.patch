@@ -1,0 +1,27 @@
+diff --git a/cmake/HermitCore.cmake b/cmake/HermitCore.cmake
+index 9297f5e..315df8c 100644
+--- a/cmake/HermitCore.cmake
++++ b/cmake/HermitCore.cmake
+@@ -48,7 +48,7 @@ set(CMAKE_ASM_NASM_FLAGS
+ 	"${CMAKE_ASM_NASM_FLAGS} -I ${CMAKE_BINARY_DIR}/include/")
+ 
+ set(HERMIT_KERNEL_FLAGS
+-					-m64 -Wall -O2 -mno-red-zone
++					-m64 -Wall -O2 -mno-red-zone -fprofile-generate 
+ 					-fno-var-tracking-assignments -fstrength-reduce
+ 					-fomit-frame-pointer -finline-functions -ffreestanding
+ 					-nostdinc -fno-stack-protector -mno-sse -mno-mmx
+@@ -60,8 +60,11 @@ set(HERMIT_KERNEL_FLAGS
+ 					-fno-strict-aliasing -fno-asynchronous-unwind-tables
+ 					-fno-strict-overflow -maccumulate-outgoing-args -g)
+ 
+-set(HERMIT_APP_FLAGS
+-					-m64 -mtls-direct-seg-refs -O3 -ftree-vectorize -g)
++set(HERMIT_APP_FLAGS -m64 -mtls-direct-seg-refs -O3 -ftree-vectorize -g)
++
++link_directories(/opt/hermit/lib/gcc/x86_64-hermit/6.3.0/)
++link_libraries(gcov)
++link_libraries(-fprofile-arcs)
+ 
+ if(MTUNE)
+ 	set(HERMIT_KERNEL_FLAGS ${HERMIT_KERNEL_FLAGS} -mtune=${MTUNE})

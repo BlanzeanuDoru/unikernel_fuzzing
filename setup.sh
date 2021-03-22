@@ -66,7 +66,6 @@ REPOS=(
 	https://github.com/rumpkernel/rumprun.git
 	https://github.com/includeos/IncludeOS
 	https://github.com/cloudius-systems/osv
-	https://github.com/ssrg-vt/hermitux
 )
 
 # Create separate directory for the investigation on OSi
@@ -92,8 +91,15 @@ cd osv
 git submodule update --init --recursive
 patch -p1 < ../../patches/osv_patch_for_gcov.patch
 # ./scripts/setup.py     #this installs prerequisites(not needed on this machine)
-./scripts/build
+# Use docker
+cd docker
+docker build -t osv/builder -f Dockerfile.builder .
+docker run -it --privileged osv/builder
+# apply patch
+./scripts/build -j4
 
 # Hermitux
-cd ../hermitux
-git submodule init && git submodule update
+docker pull olivierpierre/hermitux
+docker run --privileged -it olivierpierre/hermitux
+# apply patch
+
