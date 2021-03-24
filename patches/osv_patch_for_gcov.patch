@@ -1,20 +1,68 @@
 diff --git a/Makefile b/Makefile
-index bbc57252..9c6380ed 100644
+index 833803cf..e41b788b 100644
 --- a/Makefile
 +++ b/Makefile
-@@ -305,6 +305,7 @@ COMMON = $(autodepend) -g -Wall -Wno-pointer-arith $(CFLAGS_WERROR) -Wformat=0 -
+@@ -294,9 +294,18 @@ kernel-defines = -D_KERNEL $(source-dialects)
+ # To add something that will *not* be part of the main kernel, you can do:
+ #
+ #   mydir/*.o EXTRA_FLAGS = <MY_STUFF>
++
++LIBGCOV_CFLAGS-y += -DIN_LIBGCC2 -fbuilding-libgcc -fno-stack-protector \
++	-DHAVE_CC_TLS -DL_gcov_merge_add -DL_gcov_merge_single -DL_gcov_merge_ior -DL_gcov_merge_time_profile -DL_gcov_merge_icall_topn \
++	-DL_gcov_interval_profiler -DL_gcov_interval_profiler_atomic -DL_gcov_pow2_profiler -DL_gcov_pow2_profiler_atomic \
++	-DL_gcov_one_value_profiler -DL_gcov_one_value_profiler_atomic -DL_gcov_average_profiler -DL_gcov_average_profiler_atomic \
++	-DL_gcov_ior_profiler -DL_gcov_ior_profiler_atomic -DL_gcov_indirect_call_profiler_v2 -DL_gcov_time_profiler \
++	-DL_gcov_indirect_call_topn_profiler -DL_gcov_dump -DL_gcov_flush -DL_gcov_fork -DL_gcov_execl -DL_gcov_execlp -DL_gcov_execle \
++	-DL_gcov_execv -DL_gcov_execvp -DL_gcov_execve -DL_gcov_reset -DL_gcov
++
+ EXTRA_FLAGS = -D__OSV_CORE__ -DOSV_KERNEL_BASE=$(kernel_base) -DOSV_KERNEL_VM_BASE=$(kernel_vm_base) \
+-	-DOSV_KERNEL_VM_SHIFT=$(kernel_vm_shift) -DOSV_LZKERNEL_BASE=$(lzkernel_base)
+-EXTRA_LIBS =
++	      -DOSV_KERNEL_VM_SHIFT=$(kernel_vm_shift) -DOSV_LZKERNEL_BASE=$(lzkernel_base) $(LIBGCOV_CFLAGS)
++EXTRA_LIBS = 
+ COMMON = $(autodepend) -g -Wall -Wno-pointer-arith $(CFLAGS_WERROR) -Wformat=0 -Wno-format-security \
+ 	-D __BSD_VISIBLE=1 -U _FORTIFY_SOURCE -fno-stack-protector $(INCLUDES) \
+ 	$(kernel-defines) \
+@@ -304,7 +313,12 @@ COMMON = $(autodepend) -g -Wall -Wno-pointer-arith $(CFLAGS_WERROR) -Wformat=0 -
+ 	-include compiler/include/intrinsics.hh \
  	$(arch-cflags) $(conf-opt) $(acpi-defines) $(tracing-flags) $(gcc-sysroot) \
  	$(configuration) -D__OSV__ -D__XEN_INTERFACE_VERSION__="0x00030207" -DARCH_STRING=$(ARCH_STR) $(EXTRA_FLAGS)
- COMMON += $(standard-includes-flag)
-+COMMON += -fprofile-arcs -ftest-coverage -fprofile-use -fprofile-generate -Wno-maybe-uninitialized -lgcov --coverage
+-COMMON += $(standard-includes-flag)
++COMMON += $(standard-includes-flag) 
++COMMON += --coverage -Wno-maybe-uninitialized #-lgcov 
++#COMMON += -Wno-maybe-uninitialized --coverage
++INCLUDES += -I/usr/lib/gcc/x86_64-redhat-linux/9/include/
++
++# -fprofile-use -fprofile-arcs -ftest-coverage --coverage
  
  tracing-flags-0 =
  tracing-flags-1 = -finstrument-functions -finstrument-functions-exclude-file-list=c++,trace.cc,trace.hh,align.hh,mmintrin.h
+@@ -319,7 +333,7 @@ CFLAGS = -std=gnu99 $(COMMON)
+ CFLAGS += -I libc/stdio -I libc/internal -I libc/arch/$(arch) \
+ 	-Wno-missing-braces -Wno-parentheses -Wno-unused-but-set-variable
+ 
+-ASFLAGS = -g $(autodepend) -D__ASSEMBLY__
++ASFLAGS = -g $(autodepend) --coverage -D__ASSEMBLY__
+ 
+ $(out)/fs/vfs/main.o: CXXFLAGS += -Wno-sign-compare -Wno-write-strings
+ 
+@@ -1914,9 +1928,9 @@ $(loader_options_dep): stage1
+ 	fi
+ 
+ $(out)/loader.elf: $(stage1_targets) arch/$(arch)/loader.ld $(out)/bootfs.o $(loader_options_dep)
+-	$(call quiet, $(LD) -o $@ --defsym=OSV_KERNEL_BASE=$(kernel_base) \
++	$(call quiet, $(LD) -lgcov -o $@ --defsym=OSV_KERNEL_BASE=$(kernel_base) \
+ 	    --defsym=OSV_KERNEL_VM_BASE=$(kernel_vm_base) --defsym=OSV_KERNEL_VM_SHIFT=$(kernel_vm_shift) \
+-		-Bdynamic --export-dynamic --eh-frame-hdr --enable-new-dtags -L$(out)/arch/$(arch) \
++		-Bdynamic --export-dynamic --eh-frame-hdr --enable-new-dtags -L$(out)/arch/$(arch) -L/usr/lib/gcc/x86_64-redhat-linux/9/ \
+ 	    $(^:%.ld=-T %.ld) \
+ 	    --whole-archive \
+ 	      $(libstdc++.a) $(libgcc_eh.a) \
 diff --git a/scripts/setup.py b/scripts/setup.py
-index 7413db7b..dec390c5 100755
+index 8b03bfc6..84e4bc99 100755
 --- a/scripts/setup.py
 +++ b/scripts/setup.py
-@@ -212,7 +212,13 @@ class Debian(object):
+@@ -216,7 +216,13 @@ class Debian(object):
          ec2_post_install = None
          version = '9.3'
  
@@ -29,7 +77,7 @@ index 7413db7b..dec390c5 100755
  
  class Ubuntu(object):
      name = 'Ubuntu'
-@@ -403,20 +409,19 @@ for distro in distros:
+@@ -411,20 +417,19 @@ for distro in distros:
              distro.name = dname[0]
          else:
              continue
@@ -61,7 +109,7 @@ index 7413db7b..dec390c5 100755
                  if cmdargs.ec2:
                      if distro.ec2_post_install:
                          subprocess.check_call(distro.ec2_post_install, shell=True)
-@@ -430,5 +435,7 @@ for distro in distros:
+@@ -438,5 +443,7 @@ for distro in distros:
          print ('Your distribution %s version %s is not supported by this script' % (name, version))
          sys.exit(1)
  

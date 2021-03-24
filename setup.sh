@@ -65,22 +65,39 @@ gcov_example() {
 
 # OSV
 osv_investigation() {
-	# clone repository
-	git clone https://github.com/cloudius-systems/osv
-
-	# change dir to OSV
-	cd osv
-
-	# build docker
-	cd docker && docker build -t osv/builder -f Dockerfile.builder .
+	if [ ! -d "osv" ]; then
+		# clone repository
+		git clone https://github.com/cloudius-systems/osv
+	fi
 
 	# update git submodules
-	git submodule update --init --recursive
+	git -C osv submodule update --init --recursive
+
+	# build docker
+	bash -c "cd osv/docker && docker build -t osv/builder -f Dockerfile.builder ."
+
+	# get container id if any
+	cont_id=$(docker ps -a | grep osv | cut -f 1 -d " ")
+
+	if [ "$cont_id" == "" ]; then
+		# run new container
+		docker run --name osv_container -d -it --privileged osv/builder
+		cont_id=$(docker ps -a | grep osv | cut -f 1 -d " ")
+	else
+		docker start $cont_id
+	fi
+
+	PATCH=osv_patch_for_gcov.patch
+	# copy patch inside container
+	docker cp patches/$PATCH $cont_id:/git-repos/osv/
 
 	# apply patch
-	patch -p1 < ../../patches/osv_patch_for_gcov.patch
-	# ./scripts/setup.py     #this installs prerequisites(not needed on this machine)
-	./scripts/build
+	docker exec --workdir=/git-repos/osv/ -it $cont_id bash -c "patch -p1 -i $PATCH"
+
+	# setup osv
+	docker exec --workdir=/git-repos/osv/ -it $cont_id bash -c "./scripts/setup.py"
+	# build osv
+	docker exec --workdir=/git-repos/osv/ -it $cont_id bash -c "./scripts/build -j4"
 }
 
 # Hermitux
@@ -88,8 +105,26 @@ hermitux_investigation() {
 	# get docker container with Hermitux
 	docker pull olivierpierre/hermitux
 
-	# run container
-	docker run --privileged -it olivierpierre/hermitux
+	cont_id=$(docker ps -a | grep hermitux | cut -f 1 -d " ")
+
+	if [ "$cont_id" == "" ]; then
+		# run new container
+		docker run --name hermitux_container -d --privileged -it olivierpierre/hermitux
+		cont_id=$(docker ps -a | grep hermitux | cut -f 1 -d " ")
+	else
+		docker start $cont_id
+
+	fi
+
+	PATCH=hermitux_kernel.patch
+	# copy patch inside container
+	docker cp patches/$PATCH $cont_id:/root/hermitux/hermitux-kernel
+
+	# apply patch
+	docker exec --workdir=/root/hermitux/hermitux-kernel -it $cont_id bash -c "patch -p1 -i $PATCH"
+
+	# build hermitux kernel
+	docker exec --workdir=/root/hermitux/hermitux-kernel/build -it $cont_id make
 }
 
 main() {
@@ -97,6 +132,7 @@ main() {
 		echo "Usage: $0 <examples|osv|hermitux>" >&2
 		exit 1
 	fi
+
 	if [[ "$1" == "examples" ]]; then
 		gcov_examples
 	fi
